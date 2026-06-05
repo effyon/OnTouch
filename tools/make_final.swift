@@ -26,13 +26,15 @@ func render(_ name: String, base: NSColor, top: NSColor, ink: NSColor) {
     NSGradient(starting: top, ending: base)!.draw(in: rect, angle: -90)
     NSGraphicsContext.restoreGraphicsState()
 
-    // Center the motif's bounding box exactly on cx.
+    // Center the motif's bounding box on cx; nudge down slightly for optical
+    // centering (horizontal bars at the exact center read a touch high).
     let gap = S*0.080, dotR = S*0.046
     let halfWidth = S*0.178                 // motif spans cx ± halfWidth
     let dotX = cx + halfWidth - dotR        // dot's right edge = cx + halfWidth
     let trailStartX = cx - halfWidth        // trail's left end  = cx - halfWidth
+    let centerY = cy - S*0.022              // lower y = down (origin bottom-left)
     for sign in [CGFloat(1), -1] {
-        let y = cy + sign*gap
+        let y = centerY + sign*gap
         let p = NSBezierPath()
         p.move(to: NSPoint(x: trailStartX, y: y))
         p.line(to: NSPoint(x: dotX - dotR - S*0.022, y: y))
