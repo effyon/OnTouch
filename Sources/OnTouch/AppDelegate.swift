@@ -4,11 +4,13 @@ import ApplicationServices
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reader = MultitouchReader()
+    private let typingMonitor = TypingMonitor()
     private var enableItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenu()
         promptForAccessibility()
+        typingMonitor.start()
         if !reader.start() {
             NSLog("OnTouch: no multitouch device — check Input Monitoring permission")
         }

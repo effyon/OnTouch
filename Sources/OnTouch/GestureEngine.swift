@@ -95,7 +95,8 @@ final class GestureEngine {
             }
         }
 
-        let canFire = now >= cooldownUntil && armed
+        // Hold off while the user is actively typing.
+        let canFire = now >= cooldownUntil && armed && !TypingMonitor.isTyping(window: cfg.typingGuard)
 
         // A swipe is inherently deliberate (the fingers travel), so it only
         // needs a stationary anchor present. A tap additionally requires the

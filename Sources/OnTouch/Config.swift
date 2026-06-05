@@ -56,6 +56,9 @@ struct Config: Codable {
     var tapMinSep: Double = 0.06
     var minTouchSize: Double = 0.01
     var cooldown: Double = 0.2
+    // Pause gestures for this long after any physical key press, so stray
+    // touches while typing don't fire shortcuts into your text.
+    var typingGuard: Double = 0.5
     // "*" = act in every app. Replace with a list of bundle IDs to restrict,
     // e.g. ["com.apple.Safari", "com.google.Chrome"]. Most apps share the
     // same shortcuts (Cmd-W close, Ctrl-Tab next tab, Cmd-T new, Cmd-[/] back).
@@ -87,6 +90,7 @@ struct Config: Codable {
         d.tapMinSep       = try c.decodeIfPresent(Double.self, forKey: .tapMinSep)       ?? d.tapMinSep
         d.minTouchSize    = try c.decodeIfPresent(Double.self, forKey: .minTouchSize)    ?? d.minTouchSize
         d.cooldown        = try c.decodeIfPresent(Double.self, forKey: .cooldown)        ?? d.cooldown
+        d.typingGuard     = try c.decodeIfPresent(Double.self, forKey: .typingGuard)     ?? d.typingGuard
         d.targetBundleIDs = try c.decodeIfPresent([String].self, forKey: .targetBundleIDs) ?? d.targetBundleIDs
         d.mappings        = try c.decodeIfPresent([Mapping].self, forKey: .mappings)     ?? d.mappings
         self = d

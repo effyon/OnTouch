@@ -26,6 +26,9 @@ final class ActionRunner {
         else { return }
         down.flags = ks.flags
         up.flags = ks.flags
+        // Mark these as OnTouch's own so the typing monitor ignores them.
+        down.setIntegerValueField(.eventSourceUserData, value: kOnTouchSyntheticMarker)
+        up.setIntegerValueField(.eventSourceUserData, value: kOnTouchSyntheticMarker)
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
     }
