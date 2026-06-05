@@ -43,7 +43,10 @@ struct Mapping: Codable {
 /// ~/.config/trackpad-tabs/config.json.
 struct Config: Codable {
     var anchorMinHold: Double = 0.05
-    var anchorMaxMove: Double = 0.09
+    // The anchor must stay within this fraction of the trackpad to count as
+    // "held still". Kept tight so a finger that's drifting during a two-finger
+    // scroll isn't mistaken for a planted anchor (which caused stray reloads).
+    var anchorMaxMove: Double = 0.06
     var tapMaxDuration: Double = 0.35
     var tapMaxMove: Double = 0.08
     var swipeDist: Double = 0.10
