@@ -7,14 +7,49 @@ shortcuts to Safari.
 
 ## Gestures
 
-| Gesture | Action |
+Every gesture is **anchored**: hold one finger still, then act with your other
+finger(s). This is what keeps them from colliding with macOS's built-in
+swipes. Defaults:
+
+| Hold a finger, then… | Action |
 | --- | --- |
-| Hold one finger, **tap to its left** with another | Previous tab (Ctrl-Shift-Tab) |
-| Hold one finger, **tap to its right** with another | Next tab (Ctrl-Tab) |
-| Hold one finger, **swipe down with two others** | Close current tab (Cmd-W) |
+| **tap left** with one finger | Previous tab |
+| **tap right** with one finger | Next tab |
+| **swipe left** with one finger | Back |
+| **swipe right** with one finger | Forward |
+| **swipe up** with one finger | Reload page |
+| **swipe down** with two fingers | Close tab |
+| **swipe up** with two fingers | New tab |
+| **tap** with two fingers | Reopen closed tab |
 
 Gestures only fire while **Safari is frontmost** (configurable), so they never
-interfere with other apps.
+interfere with other apps. Every binding is editable — see
+[Custom gestures](#custom-gestures).
+
+## Custom gestures
+
+Copy [`config.example.json`](config.example.json) to
+`~/.config/trackpad-tabs/config.json` and edit it (no rebuild needed — restart
+the app to reload). Each binding looks like:
+
+```json
+{ "anchor": true, "fingers": 2, "type": "swipe", "direction": "up", "action": "newTab" }
+```
+
+| Field | Values |
+| --- | --- |
+| `anchor` | `true` = hold one finger as an anchor (recommended) |
+| `fingers` | number of *acting* fingers (anchor not counted): `1`, `2`, `3` |
+| `type` | `"tap"` or `"swipe"` |
+| `direction` | tap → position vs. the anchor: `left`/`right`/`up`/`down`/`any`<br>swipe → `left`/`right`/`up`/`down` |
+| `action` | a built-in name **or** any key chord like `"cmd+shift+t"` |
+| `apps` | *(optional)* bundle IDs this binding applies to; defaults to `targetBundleIDs` |
+
+**Built-in actions:** `nextTab`, `prevTab`, `closeTab`, `newTab`, `reopenTab`,
+`closeWindow`, `reload`, `back`, `forward`, `newWindow`, `privateWindow`,
+`showAllTabs`, `zoomIn`, `zoomOut`, `firstTab`. Anything else is parsed as a key
+chord (`cmd`/`shift`/`ctrl`/`alt` + a key), so you can trigger *any* menu command
+in *any* app — e.g. `{"...": "...", "action": "cmd+l"}` to focus the address bar.
 
 ## Build & run
 

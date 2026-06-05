@@ -38,7 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         for line in ["Hold a finger, tap left/right = prev/next tab",
-                     "Hold a finger, two-finger swipe down = close tab"] {
+                     "…swipe = back/fwd/reload, 2-finger = close/new/reopen",
+                     "Customize: ~/.config/trackpad-tabs/config.json"] {
             let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
             item.isEnabled = false
             menu.addItem(item)

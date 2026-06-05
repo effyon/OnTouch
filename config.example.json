@@ -1,0 +1,23 @@
+{
+  "_comment": "Copy this to ~/.config/trackpad-tabs/config.json and edit. Any key you omit keeps its built-in default. All distances are normalized trackpad units (0-1); times are seconds.",
+
+  "targetBundleIDs": ["com.apple.Safari"],
+
+  "mappings": [
+    { "anchor": true, "fingers": 1, "type": "tap",   "direction": "left",  "action": "prevTab" },
+    { "anchor": true, "fingers": 1, "type": "tap",   "direction": "right", "action": "nextTab" },
+    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "left",  "action": "back" },
+    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "right", "action": "forward" },
+    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "up",    "action": "reload" },
+    { "anchor": true, "fingers": 2, "type": "swipe", "direction": "down",  "action": "closeTab" },
+    { "anchor": true, "fingers": 2, "type": "swipe", "direction": "up",    "action": "newTab" },
+    { "anchor": true, "fingers": 2, "type": "tap",   "direction": "any",   "action": "reopenTab" },
+
+    { "_example_custom_keystroke": "any chord works as an action",
+      "anchor": true, "fingers": 3, "type": "tap", "direction": "any", "action": "cmd+shift+t" },
+
+    { "_example_per_app": "scope a binding to specific apps with 'apps'",
+      "anchor": true, "fingers": 1, "type": "swipe", "direction": "down",
+      "action": "cmd+l", "apps": ["com.apple.Safari", "com.google.Chrome"] }
+  ]
+}
