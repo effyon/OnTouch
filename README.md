@@ -31,6 +31,25 @@ bar (hand icon + "OnTouch" label); there is no Dock icon.
 > or use a menu-bar manager (e.g. Bartender/Ice) to reveal it. The "OnTouch"
 > text label makes it easier to spot.
 
+## Install & run at login
+
+Copy the app into `/Applications` and register a LaunchAgent so it starts
+automatically each time you log in:
+
+```sh
+./build.sh
+cp -R OnTouch.app /Applications/
+cp com.local.ontouch.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/com.local.ontouch.plist
+```
+
+To stop it autostarting:
+
+```sh
+launchctl unload -w ~/Library/LaunchAgents/com.local.ontouch.plist
+rm ~/Library/LaunchAgents/com.local.ontouch.plist
+```
+
 ## Permissions (first launch)
 
 macOS will prompt for two permissions. Grant both, then **quit and relaunch**:
@@ -70,6 +89,20 @@ Distances are normalized trackpad units (0–1); times are in seconds.
 - `ActionRunner` — posts the mapped keyboard shortcut, but only when a target
   app is frontmost.
 - `AppDelegate` — menu-bar UI, enable/disable toggle, permission shortcuts.
+
+## Sharing with others
+
+Because OnTouch reads a private framework and posts keystrokes, it can't go on
+the Mac App Store, but you can still share it:
+
+- **Source (this repo)** — anyone can clone and `./build.sh`. Zero cost.
+- **Send the `.app` to a friend** — zip `OnTouch.app` and send it. Since it
+  isn't signed by an Apple Developer ID, macOS Gatekeeper will block the first
+  open. They right-click the app → **Open** → **Open** (only needed once), then
+  grant Accessibility + Input Monitoring. Heads-up: each person must do this.
+- **Polished public release** — requires the Apple Developer Program ($99/yr) to
+  get a Developer ID certificate, then **sign + notarize** the app so Gatekeeper
+  trusts it. Distribute as a `.dmg` or zip, or via a Homebrew cask.
 
 ## Credits
 
