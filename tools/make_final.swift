@@ -26,11 +26,15 @@ func render(_ name: String, base: NSColor, top: NSColor, ink: NSColor) {
     NSGradient(starting: top, ending: base)!.draw(in: rect, angle: -90)
     NSGraphicsContext.restoreGraphicsState()
 
-    let gap = S*0.080, dotR = S*0.046, dotX = cx + S*0.105
+    // Center the motif's bounding box exactly on cx.
+    let gap = S*0.080, dotR = S*0.046
+    let halfWidth = S*0.178                 // motif spans cx ± halfWidth
+    let dotX = cx + halfWidth - dotR        // dot's right edge = cx + halfWidth
+    let trailStartX = cx - halfWidth        // trail's left end  = cx - halfWidth
     for sign in [CGFloat(1), -1] {
         let y = cy + sign*gap
         let p = NSBezierPath()
-        p.move(to: NSPoint(x: cx - S*0.205, y: y))
+        p.move(to: NSPoint(x: trailStartX, y: y))
         p.line(to: NSPoint(x: dotX - dotR - S*0.022, y: y))
         p.lineWidth = S*0.020; p.lineCapStyle = .round; ink.setStroke(); p.stroke()
         ink.setFill()
