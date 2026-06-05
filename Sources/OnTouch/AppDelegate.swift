@@ -19,15 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            // Prefer an SF Symbol; fall back to text so the item is always visible.
-            if let image = NSImage(systemSymbolName: "hand.point.up.left.fill",
-                                   accessibilityDescription: "OnTouch") {
-                button.image = image
-            }
-            // A short title guarantees a visible hit target even if the symbol
-            // fails to render (and helps you spot it next to other menu items).
-            button.title = "OnTouch"
-            button.imagePosition = .imageLeading
+            button.image = Self.brandImage()
+            button.imagePosition = .imageOnly
+            button.toolTip = "OnTouch"
         }
 
         let menu = NSMenu()
@@ -58,6 +52,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         statusItem.menu = menu
+    }
+
+    /// A monochrome "On" wordmark for the menu bar, matching the app icon. As a
+    /// template image, macOS tints it correctly for light/dark menu bars.
+    private static func brandImage() -> NSImage {
+        let text = "On" as NSString
+        let font = NSFont.systemFont(ofSize: 14, weight: .heavy)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
+        let size = text.size(withAttributes: attrs)
+        let image = NSImage(size: NSSize(width: ceil(size.width) + 2, height: ceil(size.height)))
+        image.lockFocus()
+        text.draw(at: NSPoint(x: 1, y: 0), withAttributes: attrs)
+        image.unlockFocus()
+        image.isTemplate = true
+        return image
     }
 
     @objc private func toggleEnabled() {

@@ -22,8 +22,9 @@ swipes. Defaults:
 | **swipe up** with two fingers | New tab |
 | **tap** with two fingers | Reopen closed tab |
 
-Gestures only fire while **Safari is frontmost** (configurable), so they never
-interfere with other apps. Every binding is editable — see
+Gestures only fire while a **supported browser is frontmost** (Safari, Chrome,
+Arc, Brave, Edge, Firefox by default — configurable), so they never interfere
+with other apps. Every binding is editable — see
 [Custom gestures](#custom-gestures).
 
 ## Custom gestures
