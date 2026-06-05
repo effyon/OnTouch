@@ -59,10 +59,19 @@ struct Config: Codable {
     // Pause gestures for this long after any physical key press, so stray
     // touches while typing don't fire shortcuts into your text.
     var typingGuard: Double = 0.5
-    // "*" = act in every app. Replace with a list of bundle IDs to restrict,
-    // e.g. ["com.apple.Safari", "com.google.Chrome"]. Most apps share the
-    // same shortcuts (Cmd-W close, Ctrl-Tab next tab, Cmd-T new, Cmd-[/] back).
-    var targetBundleIDs: [String] = ["*"]
+    // Apps where gestures act. Use ["*"] to act in every app (riskier — a stray
+    // gesture can fire shortcuts into text fields). Default: browsers + Finder,
+    // which all share the same shortcuts (Cmd-W close, Ctrl-Tab next, Cmd-T new,
+    // Cmd-[/] back) and aren't text editors.
+    var targetBundleIDs: [String] = [
+        "com.apple.Safari",
+        "com.google.Chrome",
+        "company.thebrowser.Browser",   // Arc
+        "com.brave.Browser",
+        "com.microsoft.edgemac",        // Edge
+        "org.mozilla.firefox",
+        "com.apple.finder",
+    ]
 
     /// Jitouch-style defaults. Hold one finger as the anchor, then:
     var mappings: [Mapping] = [

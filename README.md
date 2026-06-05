@@ -22,9 +22,11 @@ swipes. Defaults:
 | **swipe up** with two fingers | New tab |
 | **tap** with two fingers | Reopen closed tab |
 
-By default gestures work in **every app** (`targetBundleIDs: ["*"]`) — most apps
-share the same shortcuts (Cmd-W close, Ctrl-Tab next, Cmd-T new, Cmd-[/] back).
-Restrict them to specific apps by listing bundle IDs instead. Every binding is editable — see
+By default gestures work in **browsers + Finder** (which share the same
+shortcuts: Cmd-W close, Ctrl-Tab next, Cmd-T new, Cmd-[/] back). Set
+`targetBundleIDs` to `["*"]` to act in every app, or list specific bundle IDs.
+OnTouch also pauses for `typingGuard` seconds after each key press so stray
+touches can't fire shortcuts while you type. Every binding is editable — see
 [Custom gestures](#custom-gestures).
 
 ## Custom gestures
