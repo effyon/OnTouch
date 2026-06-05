@@ -5,8 +5,13 @@ import CoreGraphics
 /// frontmost — so gestures never hijack input from unrelated windows.
 final class ActionRunner {
     func perform(action: String, apps: [String]) {
-        guard let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-              apps.contains(front) else { return }
+        // "*" (or an empty list) means "every app". Otherwise the frontmost app
+        // must be in the list.
+        let anyApp = apps.isEmpty || apps.contains("*")
+        if !anyApp {
+            guard let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+                  apps.contains(front) else { return }
+        }
         guard let ks = Keys.parse(action) else {
             NSLog("OnTouch: unknown action '\(action)'")
             return

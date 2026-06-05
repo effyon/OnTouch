@@ -1,14 +1,8 @@
 {
   "_comment": "Copy this to ~/.config/trackpad-tabs/config.json and edit. Any key you omit keeps its built-in default. All distances are normalized trackpad units (0-1); times are seconds.",
 
-  "targetBundleIDs": [
-    "com.apple.Safari",
-    "com.google.Chrome",
-    "company.thebrowser.Browser",
-    "com.brave.Browser",
-    "com.microsoft.edgemac",
-    "org.mozilla.firefox"
-  ],
+  "_targetBundleIDs_note": "\"*\" = act in every app. To restrict, list bundle IDs instead, e.g. [\"com.apple.Safari\", \"com.google.Chrome\"].",
+  "targetBundleIDs": ["*"],
 
   "mappings": [
     { "anchor": true, "fingers": 1, "type": "tap",   "direction": "left",  "action": "prevTab" },

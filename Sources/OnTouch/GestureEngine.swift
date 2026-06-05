@@ -97,10 +97,12 @@ final class GestureEngine {
 
         let canFire = now >= cooldownUntil && armed
 
-        // The anchor only counts if it was held BEFORE the acting fingers began
-        // (a real two-finger tap / right-click lands both fingers together, so
-        // its "anchor" won't lead and the gesture is rejected).
-        let anchorActive: Bool = {
+        // A swipe is inherently deliberate (the fingers travel), so it only
+        // needs a stationary anchor present. A tap additionally requires the
+        // anchor to have been held BEFORE the tapping finger began — that's what
+        // rejects a two-finger tap / right-click (both fingers land together).
+        let anchorPresent = anchor != nil
+        let anchorLeads: Bool = {
             guard let a = anchor, let ep = episode else { return false }
             return (ep.start - a.startTime) >= cfg.anchorLead
         }()
@@ -108,7 +110,7 @@ final class GestureEngine {
         // 6a. Swipe — fires mid-gesture, while the acting fingers are still down.
         if canFire, var ep = episode, !ep.fired, !acting.isEmpty,
            let dir = swipeDirection(acting) {
-            if let m = match(anchor: anchorActive, fingers: acting.count, type: "swipe", direction: dir) {
+            if let m = match(anchor: anchorPresent, fingers: acting.count, type: "swipe", direction: dir) {
                 fire(m, now)
                 ep.fired = true
                 episode = ep
@@ -119,8 +121,8 @@ final class GestureEngine {
         if acting.isEmpty, let ep = episode {
             if canFire, !ep.fired,
                (now - ep.start) <= cfg.tapMaxDuration, ep.maxDisp <= cfg.tapMaxMove {
-                let dir = tapDirection(ep.centroid, anchor: anchorActive ? anchor : nil)
-                if let m = match(anchor: anchorActive, fingers: ep.peak, type: "tap", direction: dir) {
+                let dir = tapDirection(ep.centroid, anchor: anchorLeads ? anchor : nil)
+                if let m = match(anchor: anchorLeads, fingers: ep.peak, type: "tap", direction: dir) {
                     fire(m, now)
                 }
             }

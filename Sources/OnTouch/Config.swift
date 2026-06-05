@@ -56,14 +56,10 @@ struct Config: Codable {
     var tapMinSep: Double = 0.06
     var minTouchSize: Double = 0.01
     var cooldown: Double = 0.2
-    var targetBundleIDs: [String] = [
-        "com.apple.Safari",
-        "com.google.Chrome",
-        "company.thebrowser.Browser",   // Arc
-        "com.brave.Browser",
-        "com.microsoft.edgemac",        // Edge
-        "org.mozilla.firefox",
-    ]
+    // "*" = act in every app. Replace with a list of bundle IDs to restrict,
+    // e.g. ["com.apple.Safari", "com.google.Chrome"]. Most apps share the
+    // same shortcuts (Cmd-W close, Ctrl-Tab next tab, Cmd-T new, Cmd-[/] back).
+    var targetBundleIDs: [String] = ["*"]
 
     /// Jitouch-style defaults. Hold one finger as the anchor, then:
     var mappings: [Mapping] = [

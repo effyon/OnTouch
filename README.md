@@ -22,9 +22,9 @@ swipes. Defaults:
 | **swipe up** with two fingers | New tab |
 | **tap** with two fingers | Reopen closed tab |
 
-Gestures only fire while a **supported browser is frontmost** (Safari, Chrome,
-Arc, Brave, Edge, Firefox by default — configurable), so they never interfere
-with other apps. Every binding is editable — see
+By default gestures work in **every app** (`targetBundleIDs: ["*"]`) — most apps
+share the same shortcuts (Cmd-W close, Ctrl-Tab next, Cmd-T new, Cmd-[/] back).
+Restrict them to specific apps by listing bundle IDs instead. Every binding is editable — see
 [Custom gestures](#custom-gestures).
 
 ## Custom gestures
