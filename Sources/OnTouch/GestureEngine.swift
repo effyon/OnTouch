@@ -97,10 +97,18 @@ final class GestureEngine {
 
         let canFire = now >= cooldownUntil && armed
 
+        // The anchor only counts if it was held BEFORE the acting fingers began
+        // (a real two-finger tap / right-click lands both fingers together, so
+        // its "anchor" won't lead and the gesture is rejected).
+        let anchorActive: Bool = {
+            guard let a = anchor, let ep = episode else { return false }
+            return (ep.start - a.startTime) >= cfg.anchorLead
+        }()
+
         // 6a. Swipe — fires mid-gesture, while the acting fingers are still down.
         if canFire, var ep = episode, !ep.fired, !acting.isEmpty,
            let dir = swipeDirection(acting) {
-            if let m = match(anchor: anchor != nil, fingers: acting.count, type: "swipe", direction: dir) {
+            if let m = match(anchor: anchorActive, fingers: acting.count, type: "swipe", direction: dir) {
                 fire(m, now)
                 ep.fired = true
                 episode = ep
@@ -111,8 +119,8 @@ final class GestureEngine {
         if acting.isEmpty, let ep = episode {
             if canFire, !ep.fired,
                (now - ep.start) <= cfg.tapMaxDuration, ep.maxDisp <= cfg.tapMaxMove {
-                let dir = tapDirection(ep.centroid, anchor: anchor)
-                if let m = match(anchor: anchor != nil, fingers: ep.peak, type: "tap", direction: dir) {
+                let dir = tapDirection(ep.centroid, anchor: anchorActive ? anchor : nil)
+                if let m = match(anchor: anchorActive, fingers: ep.peak, type: "tap", direction: dir) {
                     fire(m, now)
                 }
             }
@@ -129,12 +137,17 @@ final class GestureEngine {
                        y: pts.map { $0.y }.reduce(0, +) / n)
     }
 
-    /// Direction of a tap relative to the anchor ("any" if there's no anchor).
+    /// Direction of a tap relative to the anchor. Returns "none" (which matches
+    /// no directional binding) if there's no anchor or the tap is too close to
+    /// it to read a clear direction.
     private func tapDirection(_ c: CGPoint, anchor: Touch?) -> String {
-        guard let a = anchor else { return "any" }
+        guard let a = anchor else { return "none" }
         let dx = c.x - a.curPos.x, dy = c.y - a.curPos.y
-        if abs(dx) >= abs(dy) { return dx < 0 ? "left" : "right" }
-        return dy < 0 ? "down" : "up"   // normalized y origin is bottom-left
+        let sep = CGFloat(cfg.tapMinSep)
+        if abs(dx) >= abs(dy) {
+            return abs(dx) >= sep ? (dx < 0 ? "left" : "right") : "none"
+        }
+        return abs(dy) >= sep ? (dy < 0 ? "down" : "up") : "none"
     }
 
     /// Direction of a swipe, or nil if the fingers haven't all moved far enough

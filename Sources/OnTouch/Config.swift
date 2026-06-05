@@ -47,6 +47,13 @@ struct Config: Codable {
     var tapMaxDuration: Double = 0.35
     var tapMaxMove: Double = 0.08
     var swipeDist: Double = 0.10
+    // The anchor must be held at least this long BEFORE the acting fingers
+    // touch. This is what distinguishes a deliberate anchored gesture from a
+    // two-finger tap / right-click (where both fingers land together).
+    var anchorLead: Double = 0.12
+    // A tap must be at least this far from the anchor to count as a directional
+    // (left/right/up/down) tap — rejects incidental touches next to the anchor.
+    var tapMinSep: Double = 0.06
     var minTouchSize: Double = 0.01
     var cooldown: Double = 0.2
     var targetBundleIDs: [String] = [
@@ -80,6 +87,8 @@ struct Config: Codable {
         d.tapMaxDuration  = try c.decodeIfPresent(Double.self, forKey: .tapMaxDuration)  ?? d.tapMaxDuration
         d.tapMaxMove      = try c.decodeIfPresent(Double.self, forKey: .tapMaxMove)      ?? d.tapMaxMove
         d.swipeDist       = try c.decodeIfPresent(Double.self, forKey: .swipeDist)       ?? d.swipeDist
+        d.anchorLead      = try c.decodeIfPresent(Double.self, forKey: .anchorLead)      ?? d.anchorLead
+        d.tapMinSep       = try c.decodeIfPresent(Double.self, forKey: .tapMinSep)       ?? d.tapMinSep
         d.minTouchSize    = try c.decodeIfPresent(Double.self, forKey: .minTouchSize)    ?? d.minTouchSize
         d.cooldown        = try c.decodeIfPresent(Double.self, forKey: .cooldown)        ?? d.cooldown
         d.targetBundleIDs = try c.decodeIfPresent([String].self, forKey: .targetBundleIDs) ?? d.targetBundleIDs
