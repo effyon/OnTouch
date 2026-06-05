@@ -5,12 +5,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reader = MultitouchReader()
     private let typingMonitor = TypingMonitor()
+    private let clickSuppressor = ClickSuppressor()
     private var enableItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenu()
         promptForAccessibility()
         typingMonitor.start()
+        clickSuppressor.start()
         if !reader.start() {
             NSLog("OnTouch: no multitouch device — check Input Monitoring permission")
         }
@@ -34,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         for line in ["Hold a finger, tap left/right = prev/next tab",
-                     "…swipe = back/fwd/reload, 2-finger = close/new/reopen",
+                     "Hold a finger, 2-finger swipe down = close tab",
                      "Customize: ~/.config/trackpad-tabs/config.json"] {
             let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
             item.isEnabled = false

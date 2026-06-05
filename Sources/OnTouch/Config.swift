@@ -76,15 +76,13 @@ struct Config: Codable {
         "com.apple.finder",
     ]
 
-    /// Jitouch-style defaults. Hold one finger as the anchor, then:
+    /// Focused defaults: switching + closing tabs. Hold one finger as the
+    /// anchor, then act with the other(s). Removed the single-finger swipes
+    /// (back/forward/reload) — they collided with two-finger scrolling.
     var mappings: [Mapping] = [
         Mapping(fingers: 1, type: "tap",   direction: "left",  action: "prevTab"),
         Mapping(fingers: 1, type: "tap",   direction: "right", action: "nextTab"),
-        Mapping(fingers: 1, type: "swipe", direction: "left",  action: "back"),
-        Mapping(fingers: 1, type: "swipe", direction: "right", action: "forward"),
-        Mapping(fingers: 1, type: "swipe", direction: "up",    action: "reload"),
         Mapping(fingers: 2, type: "swipe", direction: "down",  action: "closeTab"),
-        Mapping(fingers: 2, type: "swipe", direction: "up",    action: "newTab"),
         Mapping(fingers: 2, type: "tap",   direction: "any",   action: "reopenTab"),
     ]
 

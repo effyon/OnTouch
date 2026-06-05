@@ -12,14 +12,11 @@
     "com.apple.finder"
   ],
 
+  "_mappings_note": "Single-finger swipes collide with two-finger scrolling, so the defaults focus on switching + closing tabs. Add more bindings (back/forward/reload/newTab) here if you want them.",
   "mappings": [
     { "anchor": true, "fingers": 1, "type": "tap",   "direction": "left",  "action": "prevTab" },
     { "anchor": true, "fingers": 1, "type": "tap",   "direction": "right", "action": "nextTab" },
-    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "left",  "action": "back" },
-    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "right", "action": "forward" },
-    { "anchor": true, "fingers": 1, "type": "swipe", "direction": "up",    "action": "reload" },
     { "anchor": true, "fingers": 2, "type": "swipe", "direction": "down",  "action": "closeTab" },
-    { "anchor": true, "fingers": 2, "type": "swipe", "direction": "up",    "action": "newTab" },
     { "anchor": true, "fingers": 2, "type": "tap",   "direction": "any",   "action": "reopenTab" },
 
     { "_example_custom_keystroke": "any chord works as an action",

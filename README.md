@@ -15,19 +15,25 @@ swipes. Defaults:
 | --- | --- |
 | **tap left** with one finger | Previous tab |
 | **tap right** with one finger | Next tab |
-| **swipe left** with one finger | Back |
-| **swipe right** with one finger | Forward |
-| **swipe up** with one finger | Reload page |
 | **swipe down** with two fingers | Close tab |
-| **swipe up** with two fingers | New tab |
 | **tap** with two fingers | Reopen closed tab |
 
+The defaults focus on switching + closing tabs. Single-finger *swipes*
+(back/forward/reload) are left out by default because they collide with
+two-finger scrolling — add them in your config if you want them.
+
 By default gestures work in **browsers + Finder** (which share the same
-shortcuts: Cmd-W close, Ctrl-Tab next, Cmd-T new, Cmd-[/] back). Set
-`targetBundleIDs` to `["*"]` to act in every app, or list specific bundle IDs.
-OnTouch also pauses for `typingGuard` seconds after each key press so stray
-touches can't fire shortcuts while you type. Every binding is editable — see
-[Custom gestures](#custom-gestures).
+shortcuts: Cmd-W close, Ctrl-Tab next). Set `targetBundleIDs` to `["*"]` to act
+in every app, or list specific bundle IDs. Two safeguards keep gestures from
+interfering with normal use:
+
+- **Typing guard** — gestures pause for `typingGuard` seconds after any key
+  press, so a stray touch can't fire shortcuts while you type.
+- **Click suppression** — while 2+ fingers are on the trackpad (i.e. during a
+  gesture), OnTouch swallows the "tap to click", so a tap-to-switch-tabs won't
+  click a link under the pointer.
+
+Every binding is editable — see [Custom gestures](#custom-gestures).
 
 ## Custom gestures
 

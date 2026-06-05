@@ -12,6 +12,10 @@ import CMultitouch
 final class GestureEngine {
     static let shared = GestureEngine()
 
+    /// Number of fingers currently on the trackpad. Read by ClickSuppressor to
+    /// drop the click that a gesture-tap would otherwise generate.
+    static var liveFingerCount = 0
+
     var enabled = true
 
     private let cfg = Config.shared
@@ -41,7 +45,7 @@ final class GestureEngine {
     private var armed = true     // re-armed once acting fingers clear
 
     func handleFrame(data: UnsafeMutablePointer<Finger>?, count: Int, timestamp now: Double) {
-        guard enabled else { tracked.removeAll(); episode = nil; return }
+        guard enabled else { tracked.removeAll(); episode = nil; Self.liveFingerCount = 0; return }
         guard let data = data else { return }
 
         // 1. Ingest current contacts.
@@ -62,6 +66,7 @@ final class GestureEngine {
                                               startPos: pos, curPos: pos, maxDisp: 0, lastSeen: now)
             }
         }
+        Self.liveFingerCount = currentIDs.count
 
         // 2. Collect fingers that just lifted.
         var lifted: [Touch] = []
