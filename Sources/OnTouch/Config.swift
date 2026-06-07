@@ -62,6 +62,9 @@ struct Config: Codable {
     // Pause gestures for this long after any physical key press, so stray
     // touches while typing don't fire shortcuts into your text.
     var typingGuard: Double = 0.5
+    // Pause gestures for this long after scrolling, so the touches between
+    // scroll strokes aren't mistaken for tab-switch taps.
+    var scrollGuard: Double = 0.4
     // Apps where gestures act. Use ["*"] to act in every app (riskier — a stray
     // gesture can fire shortcuts into text fields). Default: browsers + Finder,
     // which all share the same shortcuts (Cmd-W close, Ctrl-Tab next, Cmd-T new,
@@ -101,6 +104,7 @@ struct Config: Codable {
         d.minTouchSize    = try c.decodeIfPresent(Double.self, forKey: .minTouchSize)    ?? d.minTouchSize
         d.cooldown        = try c.decodeIfPresent(Double.self, forKey: .cooldown)        ?? d.cooldown
         d.typingGuard     = try c.decodeIfPresent(Double.self, forKey: .typingGuard)     ?? d.typingGuard
+        d.scrollGuard     = try c.decodeIfPresent(Double.self, forKey: .scrollGuard)     ?? d.scrollGuard
         d.targetBundleIDs = try c.decodeIfPresent([String].self, forKey: .targetBundleIDs) ?? d.targetBundleIDs
         d.mappings        = try c.decodeIfPresent([Mapping].self, forKey: .mappings)     ?? d.mappings
         self = d

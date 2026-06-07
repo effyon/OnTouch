@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reader = MultitouchReader()
     private let typingMonitor = TypingMonitor()
+    private let scrollMonitor = ScrollMonitor()
     private let clickSuppressor = ClickSuppressor()
     private var enableItem: NSMenuItem!
 
@@ -12,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenu()
         promptForAccessibility()
         typingMonitor.start()
+        scrollMonitor.start()
         clickSuppressor.start()
         if !reader.start() {
             NSLog("OnTouch: no multitouch device — check Input Monitoring permission")

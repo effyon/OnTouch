@@ -100,8 +100,15 @@ final class GestureEngine {
             }
         }
 
-        // Hold off while the user is actively typing.
-        let canFire = now >= cooldownUntil && armed && !TypingMonitor.isTyping(window: cfg.typingGuard)
+        let baseCanFire = now >= cooldownUntil && armed
+            && !TypingMonitor.isTyping(window: cfg.typingGuard)
+        // Scrolling only blocks TAP gestures (a quick tap during scroll
+        // repositioning gets mistaken for a tab switch). Swipe gestures like
+        // close-tab are themselves downward motions and need an anchor, so the
+        // scroll guard must NOT block them — otherwise closing tabs fails on
+        // long, scrollable pages.
+        let canFireSwipe = baseCanFire
+        let canFireTap = baseCanFire && !ScrollMonitor.isScrolling(window: cfg.scrollGuard)
 
         // A swipe is inherently deliberate (the fingers travel), so it only
         // needs a stationary anchor present. A tap additionally requires the
@@ -114,7 +121,7 @@ final class GestureEngine {
         }()
 
         // 6a. Swipe — fires mid-gesture, while the acting fingers are still down.
-        if canFire, var ep = episode, !ep.fired, !acting.isEmpty,
+        if canFireSwipe, var ep = episode, !ep.fired, !acting.isEmpty,
            let dir = swipeDirection(acting) {
             if let m = match(anchor: anchorPresent, fingers: acting.count, type: "swipe", direction: dir) {
                 fire(m, now)
@@ -125,7 +132,7 @@ final class GestureEngine {
 
         // 6b. Tap — fires when the acting fingers have all lifted.
         if acting.isEmpty, let ep = episode {
-            if canFire, !ep.fired,
+            if canFireTap, !ep.fired,
                (now - ep.start) <= cfg.tapMaxDuration, ep.maxDisp <= cfg.tapMaxMove {
                 let dir = tapDirection(ep.centroid, anchor: anchorLeads ? anchor : nil)
                 if let m = match(anchor: anchorLeads, fingers: ep.peak, type: "tap", direction: dir) {
@@ -152,10 +159,13 @@ final class GestureEngine {
         guard let a = anchor else { return "none" }
         let dx = c.x - a.curPos.x, dy = c.y - a.curPos.y
         let sep = CGFloat(cfg.tapMinSep)
-        if abs(dx) >= abs(dy) {
-            return abs(dx) >= sep ? (dx < 0 ? "left" : "right") : "none"
-        }
-        return abs(dy) >= sep ? (dy < 0 ? "down" : "up") : "none"
+        // Prefer horizontal (tab switching). A left/right tap often lands higher
+        // than the anchor too, so we must NOT let that vertical offset reclassify
+        // it as up/down — as long as there's clear horizontal separation, it's
+        // a left/right tap regardless of how high it landed.
+        if abs(dx) >= sep { return dx < 0 ? "left" : "right" }
+        if abs(dy) >= sep { return dy < 0 ? "down" : "up" }
+        return "none"
     }
 
     /// Direction of a swipe, or nil if the fingers haven't all moved far enough
