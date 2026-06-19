@@ -24,11 +24,16 @@ two-finger scrolling — add them in your config if you want them.
 
 By default gestures work in **browsers + Finder** (which share the same
 shortcuts: Cmd-W close, Ctrl-Tab next). Set `targetBundleIDs` to `["*"]` to act
-in every app, or list specific bundle IDs. Two safeguards keep gestures from
+in every app, or list specific bundle IDs. Several safeguards keep gestures from
 interfering with normal use:
 
+- **Pointer guard** — a gesture only acts when the window directly under the
+  cursor belongs to a target app, so gestures over a menu, the Dock, or another
+  app do nothing. (Disabled when `targetBundleIDs` is `["*"]`.)
 - **Typing guard** — gestures pause for `typingGuard` seconds after any key
   press, so a stray touch can't fire shortcuts while you type.
+- **Scroll guard** — taps pause for `scrollGuard` seconds after scrolling, so a
+  touch between scroll strokes isn't mistaken for a tab switch.
 - **Click suppression** — while 2+ fingers are on the trackpad (i.e. during a
   gesture), OnTouch swallows the "tap to click", so a tap-to-switch-tabs won't
   click a link under the pointer.
