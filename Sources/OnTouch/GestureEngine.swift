@@ -79,10 +79,16 @@ final class GestureEngine {
         //    so gestures can be repeated without lifting the anchor.
         if tracked.count <= 1 { armed = true }
 
-        // 4. Identify the anchor: a held, near-stationary finger.
+        // 4. Identify the anchor: a held, near-stationary finger. Touches in the
+        //    bottom edge strip are rejected — that's where a thumb rests while
+        //    the hand is on the keyboard (normalized y origin is bottom-left).
         let present = Array(tracked.values)
         let anchor = present
-            .filter { $0.maxDisp < cfg.anchorMaxMove && (now - $0.startTime) >= cfg.anchorMinHold }
+            .filter {
+                $0.maxDisp < cfg.anchorMaxMove
+                    && (now - $0.startTime) >= cfg.anchorMinHold
+                    && $0.startPos.y > CGFloat(cfg.anchorEdgeZone)
+            }
             .min(by: { $0.maxDisp < $1.maxDisp })
 
         let acting = present.filter { $0.id != anchor?.id }

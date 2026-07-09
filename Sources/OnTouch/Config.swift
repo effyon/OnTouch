@@ -57,6 +57,10 @@ struct Config: Codable {
     // A tap must be at least this far from the anchor to count as a directional
     // (left/right/up/down) tap — rejects incidental touches next to the anchor.
     var tapMinSep: Double = 0.06
+    // Thumb rejection: a touch in the bottom strip of the trackpad (normalized
+    // y below this) can't be an anchor. A thumb resting while the hand is on
+    // the keyboard sits at the very bottom edge; deliberate anchors don't.
+    var anchorEdgeZone: Double = 0.15
     var minTouchSize: Double = 0.01
     var cooldown: Double = 0.2
     // Pause gestures for this long after any physical key press, so stray
@@ -101,6 +105,7 @@ struct Config: Codable {
         d.swipeDist       = try c.decodeIfPresent(Double.self, forKey: .swipeDist)       ?? d.swipeDist
         d.anchorLead      = try c.decodeIfPresent(Double.self, forKey: .anchorLead)      ?? d.anchorLead
         d.tapMinSep       = try c.decodeIfPresent(Double.self, forKey: .tapMinSep)       ?? d.tapMinSep
+        d.anchorEdgeZone  = try c.decodeIfPresent(Double.self, forKey: .anchorEdgeZone)  ?? d.anchorEdgeZone
         d.minTouchSize    = try c.decodeIfPresent(Double.self, forKey: .minTouchSize)    ?? d.minTouchSize
         d.cooldown        = try c.decodeIfPresent(Double.self, forKey: .cooldown)        ?? d.cooldown
         d.typingGuard     = try c.decodeIfPresent(Double.self, forKey: .typingGuard)     ?? d.typingGuard
