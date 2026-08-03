@@ -15,12 +15,15 @@ private func clickTapCallback(proxy: CGEventTapProxy, type: CGEventType,
 
     guard GestureEngine.shared.enabled else { return Unmanaged.passUnretained(event) }
 
+    // Suppress clicks only while an actual gesture is in progress (anchor +
+    // acting finger), not merely when 2+ fingers touch the pad — a thumb
+    // resting on the edge plus a normal click must still click.
     let suppressor = ClickSuppressor.shared
-    if type == .leftMouseDown, GestureEngine.liveFingerCount >= 2 {
+    if type == .leftMouseDown, GestureEngine.isGesturing(window: 0.25) {
         suppressor?.pendingSuppressUp = true
         return nil                      // drop the click
     }
-    if type == .leftMouseUp, GestureEngine.liveFingerCount >= 2 || (suppressor?.pendingSuppressUp ?? false) {
+    if type == .leftMouseUp, GestureEngine.isGesturing(window: 0.25) || (suppressor?.pendingSuppressUp ?? false) {
         suppressor?.pendingSuppressUp = false
         return nil                      // drop the matching release
     }

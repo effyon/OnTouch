@@ -57,10 +57,13 @@ struct Config: Codable {
     // A tap must be at least this far from the anchor to count as a directional
     // (left/right/up/down) tap — rejects incidental touches next to the anchor.
     var tapMinSep: Double = 0.06
-    // Thumb rejection: a touch in the bottom strip of the trackpad (normalized
-    // y below this) can't be an anchor. A thumb resting while the hand is on
-    // the keyboard sits at the very bottom edge; deliberate anchors don't.
-    var anchorEdgeZone: Double = 0.15
+    // Thumb/palm rejection: touches that START in an edge strip are "resting"
+    // (a thumb parked while the hand is on the keyboard) — they can be neither
+    // anchors nor acting fingers. Measured: a left thumb rests on the LEFT edge
+    // at mid-height (x≈0.02) or the top edge near the keyboard, not the bottom.
+    var anchorEdgeZone: Double = 0.15   // bottom strip (y below this)
+    var sideEdgeZone: Double = 0.05     // left/right strips (x within this of either side)
+    var topEdgeZone: Double = 0.07      // top strip (y within this of the top)
     var minTouchSize: Double = 0.01
     var cooldown: Double = 0.2
     // Pause gestures for this long after any physical key press, so stray
@@ -106,6 +109,8 @@ struct Config: Codable {
         d.anchorLead      = try c.decodeIfPresent(Double.self, forKey: .anchorLead)      ?? d.anchorLead
         d.tapMinSep       = try c.decodeIfPresent(Double.self, forKey: .tapMinSep)       ?? d.tapMinSep
         d.anchorEdgeZone  = try c.decodeIfPresent(Double.self, forKey: .anchorEdgeZone)  ?? d.anchorEdgeZone
+        d.sideEdgeZone    = try c.decodeIfPresent(Double.self, forKey: .sideEdgeZone)    ?? d.sideEdgeZone
+        d.topEdgeZone     = try c.decodeIfPresent(Double.self, forKey: .topEdgeZone)     ?? d.topEdgeZone
         d.minTouchSize    = try c.decodeIfPresent(Double.self, forKey: .minTouchSize)    ?? d.minTouchSize
         d.cooldown        = try c.decodeIfPresent(Double.self, forKey: .cooldown)        ?? d.cooldown
         d.typingGuard     = try c.decodeIfPresent(Double.self, forKey: .typingGuard)     ?? d.typingGuard

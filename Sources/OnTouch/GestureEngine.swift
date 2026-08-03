@@ -12,9 +12,20 @@ import CMultitouch
 final class GestureEngine {
     static let shared = GestureEngine()
 
-    /// Number of fingers currently on the trackpad. Read by ClickSuppressor to
-    /// drop the click that a gesture-tap would otherwise generate.
+    /// Number of fingers currently on the trackpad.
     static var liveFingerCount = 0
+
+    /// Uptime of the last frame in which a real gesture was in progress (an
+    /// eligible anchor plus at least one acting finger). ClickSuppressor uses
+    /// this — not the raw finger count — so a thumb resting on the edge plus a
+    /// normal click is NOT mistaken for a gesture and clicks pass through.
+    static private(set) var lastGestureUptime: Double = -1000
+
+    /// True if a gesture was in progress within the last `window` seconds (the
+    /// grace window covers tap-to-click events that arrive just after lift).
+    static func isGesturing(window: Double) -> Bool {
+        ProcessInfo.processInfo.systemUptime - lastGestureUptime < window
+    }
 
     var enabled = true
 
@@ -79,21 +90,37 @@ final class GestureEngine {
         //    so gestures can be repeated without lifting the anchor.
         if tracked.count <= 1 { armed = true }
 
-        // 4. Identify the anchor: a held, near-stationary finger. Touches in the
-        //    bottom edge strip are rejected — that's where a thumb rests while
-        //    the hand is on the keyboard (normalized y origin is bottom-left).
+        // Touches that STARTED in any edge strip are "resting" — a parked thumb
+        // (measured: left edge at mid-height, or top edge near the keyboard).
+        // Resting touches can be neither anchors nor acting fingers; otherwise
+        // a thumb + a stationary clicking finger reads as anchor + acting =
+        // "gesture", wrongly arming click suppression or switching tabs.
+        let isResting: (Touch) -> Bool = {
+            $0.startPos.y <= CGFloat(self.cfg.anchorEdgeZone)          // bottom
+                || $0.startPos.y >= CGFloat(1 - self.cfg.topEdgeZone)  // top
+                || $0.startPos.x <= CGFloat(self.cfg.sideEdgeZone)     // left
+                || $0.startPos.x >= CGFloat(1 - self.cfg.sideEdgeZone) // right
+        }
+
+        // 4. Identify the anchor: a held, near-stationary, non-resting finger.
         let present = Array(tracked.values)
         let anchor = present
             .filter {
                 $0.maxDisp < cfg.anchorMaxMove
                     && (now - $0.startTime) >= cfg.anchorMinHold
-                    && $0.startPos.y > CGFloat(cfg.anchorEdgeZone)
+                    && !isResting($0)
             }
             .min(by: { $0.maxDisp < $1.maxDisp })
 
-        let acting = present.filter { $0.id != anchor?.id }
-        let actingLifted = lifted.filter { $0.id != anchor?.id }
+        let acting = present.filter { $0.id != anchor?.id && !isResting($0) }
+        let actingLifted = lifted.filter { $0.id != anchor?.id && !isResting($0) }
         let frameMaxDisp = (acting.map { $0.maxDisp } + actingLifted.map { $0.maxDisp }).max() ?? 0
+
+        // A gesture is "in progress" only when an eligible anchor is planted and
+        // another finger is acting — that's what arms click suppression.
+        if anchor != nil && !(acting.isEmpty && actingLifted.isEmpty) {
+            Self.lastGestureUptime = ProcessInfo.processInfo.systemUptime
+        }
 
         // 5. Maintain the acting-finger episode.
         if !acting.isEmpty {
