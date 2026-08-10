@@ -1,15 +1,31 @@
-# OnTouch
+<p align="center">
+  <img src="Resources/icon-1024.png" width="128" alt="OnTouch icon">
+</p>
 
-A tiny macOS menu-bar app that adds Jitouch-style **anchored trackpad gestures**
-for navigating Safari tabs. It reads raw finger data from Apple's private
+<h1 align="center">OnTouch</h1>
+
+<p align="center">
+  Jitouch-style <b>anchored trackpad gestures</b> for switching and closing
+  browser tabs on macOS.
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" width="620" alt="Holding one finger and tapping to either side switches tabs">
+</p>
+
+A tiny menu-bar app that reads raw finger data from Apple's private
 `MultitouchSupport.framework` (the same approach Jitouch used) and posts keyboard
-shortcuts to Safari.
+shortcuts to the browser under your cursor.
 
 ## Gestures
 
 Every gesture is **anchored**: hold one finger still, then act with your other
 finger(s). This is what keeps them from colliding with macOS's built-in
 swipes. Defaults:
+
+<p align="center">
+  <img src="docs/gestures.png" width="720" alt="Gesture guide: tap left for previous tab, tap right for next tab, two-finger swipe down to close, two-finger tap to reopen">
+</p>
 
 | Hold a finger, then… | Action |
 | --- | --- |
@@ -34,9 +50,12 @@ interfering with normal use:
   press, so a stray touch can't fire shortcuts while you type.
 - **Scroll guard** — taps pause for `scrollGuard` seconds after scrolling, so a
   touch between scroll strokes isn't mistaken for a tab switch.
-- **Click suppression** — while 2+ fingers are on the trackpad (i.e. during a
-  gesture), OnTouch swallows the "tap to click", so a tap-to-switch-tabs won't
-  click a link under the pointer.
+- **Palm/thumb rejection** — touches that start in an edge strip (a thumb parked
+  on the trackpad while your hand rests on the keyboard) count as neither anchor
+  nor acting finger. Tunable via `sideEdgeZone`, `topEdgeZone`, `anchorEdgeZone`.
+- **Click suppression** — while an actual gesture is in progress, OnTouch
+  swallows the "tap to click", so a tap-to-switch-tabs won't click a link under
+  the pointer. A resting thumb plus an ordinary click still clicks through.
 
 Every binding is editable — see [Custom gestures](#custom-gestures).
 
@@ -135,9 +154,19 @@ Distances are normalized trackpad units (0–1); times are in seconds.
 - `MultitouchReader` — opens every MT device and streams frames via a C callback.
 - `GestureEngine` — tracks finger contacts, identifies a held *anchor* finger,
   and recognizes taps (left/right of the anchor) and two-finger down-swipes.
-- `ActionRunner` — posts the mapped keyboard shortcut, but only when a target
-  app is frontmost.
+- `ActionRunner` — posts the mapped keyboard shortcut, but only when the window
+  under the cursor belongs to a target app.
+- `TypingMonitor` / `ScrollMonitor` — pause gestures while you type or scroll.
+- `ClickSuppressor` — event tap that drops the click a gesture-tap would cause.
 - `AppDelegate` — menu-bar UI, enable/disable toggle, permission shortcuts.
+
+The images in `docs/` are generated, not screenshots — regenerate them with:
+
+```sh
+swift tools/make_demo_gif.swift        # docs/demo.gif
+swift tools/make_gesture_guide.swift   # docs/gestures.png
+swift tools/make_final.swift           # app icon source (ivory + noir)
+```
 
 ## Sharing with others
 
