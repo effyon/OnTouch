@@ -50,7 +50,10 @@ interfering with normal use:
   the duplicate before it starts reading gestures. Keep the installed copy in
   `/Applications` so the login LaunchAgent starts that same app.
 - **Active-app + pointer guard** — for scoped bindings, the window under the
-  cursor must belong to the active target app. If a different app is active,
+  cursor must belong to the active target app. macOS mouse-down hit testing
+  identifies that window, so click-through overlays do not mask Finder or a
+  browser. Real interactive floating windows, menus, and the desktop stay
+  blocked. If a different app is active,
   pointing at a browser or Finder window does nothing; activate its app first.
   Within the same app, shortcuts affect its focused window. Shortcuts are sent
   directly to the validated process. The pointer guard is disabled for `["*"]` or an

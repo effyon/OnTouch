@@ -6,6 +6,28 @@ struct ActionTarget: Equatable {
     let bundleID: String
 }
 
+struct PointerWindow {
+    let number: Int
+    let owner: ActionTarget
+    let layer: Int
+
+    init(number: Int, owner: ActionTarget, layer: Int = 0) {
+        self.number = number
+        self.owner = owner
+        self.layer = layer
+    }
+}
+
+/// Resolve the actual mouse-hit window, never a bounding rectangle above it.
+enum PointerTargetPolicy {
+    static func resolve(hitWindowNumber: Int, windows: [PointerWindow]) -> ActionTarget? {
+        guard hitWindowNumber > 0,
+              let window = windows.first(where: { $0.number == hitWindowNumber }),
+              window.layer == 0 else { return nil }
+        return window.owner
+    }
+}
+
 /// Keep the pointer guard and the recipient of the shortcut in agreement.
 enum TargetPolicy {
     static func resolve(apps: [String], frontmost: ActionTarget?,
@@ -65,26 +87,34 @@ final class ActionRunner {
     }
 
     private static func appUnderCursor() -> ActionTarget? {
-        let mouse = NSEvent.mouseLocation
-        guard let primary = NSScreen.screens.first(where: { $0.frame.origin == .zero }) else { return nil }
-        let point = CGPoint(x: mouse.x, y: primary.frame.height - mouse.y)
+        // AppKit follows mouse-down hit testing across apps and excludes
+        // transparent regions/windows that ignore mouse events. A rectangle
+        // from CGWindowList can cover Finder while belonging to an overlay.
+        // This API takes Cocoa screen points, with no manual Y-axis flip.
+        let hitNumber = NSWindow.windowNumber(at: NSEvent.mouseLocation,
+                                              belowWindowWithWindowNumber: 0)
+        guard hitNumber > 0 else {
+            Diagnostic.log("OnTouch: no mouse-hit window")
+            return nil
+        }
         guard let windows = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
         else { return nil }
 
-        for window in windows {
-            guard let rawBounds = window[kCGWindowBounds as String] as? [String: Any],
-                  let bounds = CGRect(dictionaryRepresentation: rawBounds as CFDictionary),
-                  bounds.contains(point) else { continue }
-            guard let pid = window[kCGWindowOwnerPID as String] as? pid_t,
+        let hits: [PointerWindow] = windows.compactMap { window in
+            guard let number = window[kCGWindowNumber as String] as? Int,
+                  number == hitNumber,
+                  let pid = window[kCGWindowOwnerPID as String] as? pid_t,
+                  let layer = window[kCGWindowLayer as String] as? Int,
                   let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
             else { return nil }
-            let layer = window[kCGWindowLayer as String] as? Int ?? 0
-            let alpha = window[kCGWindowAlpha as String] as? Double ?? 1
-            Diagnostic.log("OnTouch: pointer owner=\(bundleID), layer=\(layer), alpha=\(alpha)")
-            return ActionTarget(pid: pid, bundleID: bundleID)
+            Diagnostic.log("OnTouch: mouse-hit window=\(number), owner=\(bundleID), layer=\(layer)")
+            return PointerWindow(number: number,
+                                 owner: ActionTarget(pid: pid, bundleID: bundleID), layer: layer)
         }
-        return nil
+        // Menus/panels, the desktop, missing IDs, and vanished windows fail
+        // closed. A real interactive overlay is never bypassed for Finder.
+        return PointerTargetPolicy.resolve(hitWindowNumber: hitNumber, windows: hits)
     }
 
     private static func post(_ ks: Keystroke, to pid: pid_t) {

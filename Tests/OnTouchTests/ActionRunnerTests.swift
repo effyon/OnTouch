@@ -47,4 +47,72 @@ final class ActionRunnerTests: XCTestCase {
         missing.perform(action: "closeTab", apps: [finder.bundleID])
         XCTAssertEqual(posts, 0)
     }
+
+    func testNativeFinderHitWinsOverEarlierOverlayBounds() {
+        let overlay = ActionTarget(pid: 300, bundleID: "com.openai.codex")
+        let windows = [
+            PointerWindow(number: 10, owner: overlay, layer: 3),
+            PointerWindow(number: 20, owner: finder),
+        ]
+        let pointer = PointerTargetPolicy.resolve(hitWindowNumber: 20, windows: windows)
+
+        XCTAssertEqual(pointer, finder)
+        XCTAssertEqual(TargetPolicy.resolve(apps: [finder.bundleID], frontmost: finder,
+                                            underPointer: pointer), finder)
+    }
+
+    func testRealOtherAppHitDoesNotFallThroughToFinder() {
+        let otherApp = ActionTarget(pid: 300, bundleID: "com.openai.codex")
+        let windows = [
+            PointerWindow(number: 10, owner: otherApp),
+            PointerWindow(number: 20, owner: finder),
+        ]
+        let pointer = PointerTargetPolicy.resolve(hitWindowNumber: 10, windows: windows)
+
+        XCTAssertEqual(pointer, otherApp)
+        XCTAssertNil(TargetPolicy.resolve(apps: [finder.bundleID], frontmost: finder,
+                                          underPointer: pointer))
+        XCTAssertNil(PointerTargetPolicy.resolve(hitWindowNumber: 10, windows: [
+            PointerWindow(number: 10, owner: otherApp, layer: 3),
+            PointerWindow(number: 20, owner: finder),
+        ]))
+    }
+
+    func testMissingOrNonpositiveNativeWindowHitFailsClosed() {
+        let windows = [
+            PointerWindow(number: -1, owner: finder),
+            PointerWindow(number: 0, owner: finder),
+            PointerWindow(number: 20, owner: finder),
+        ]
+        for number in [-1, 0, 999] {
+            XCTAssertNil(PointerTargetPolicy.resolve(hitWindowNumber: number, windows: windows))
+        }
+        XCTAssertNil(PointerTargetPolicy.resolve(hitWindowNumber: 20, windows: []))
+    }
+
+    func testChromeNativeWindowHitRetainsTargetPolicy() {
+        let chrome = ActionTarget(pid: 400, bundleID: "com.google.Chrome")
+        let windows = [
+            PointerWindow(number: 20, owner: finder),
+            PointerWindow(number: 30, owner: chrome),
+        ]
+        let pointer = PointerTargetPolicy.resolve(hitWindowNumber: 30, windows: windows)
+
+        XCTAssertEqual(pointer, chrome)
+        XCTAssertEqual(TargetPolicy.resolve(apps: [chrome.bundleID], frontmost: chrome,
+                                            underPointer: pointer), chrome)
+    }
+
+    func testNativeMenuAndDockHitsDoNotFallThroughToNormalWindow() {
+        let dock = ActionTarget(pid: 500, bundleID: "com.apple.dock")
+        let windows = [
+            PointerWindow(number: 10, owner: finder, layer: 101),
+            PointerWindow(number: 20, owner: dock, layer: 20),
+            PointerWindow(number: 30, owner: finder, layer: 0),
+        ]
+
+        XCTAssertNil(PointerTargetPolicy.resolve(hitWindowNumber: 10, windows: windows))
+        XCTAssertNil(PointerTargetPolicy.resolve(hitWindowNumber: 20, windows: windows))
+        XCTAssertEqual(PointerTargetPolicy.resolve(hitWindowNumber: 30, windows: windows), finder)
+    }
 }
