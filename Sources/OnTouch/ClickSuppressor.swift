@@ -13,27 +13,29 @@ private func clickTapCallback(proxy: CGEventTapProxy, type: CGEventType,
         return Unmanaged.passUnretained(event)
     }
 
-    guard GestureEngine.shared.enabled else { return Unmanaged.passUnretained(event) }
-
-    // Suppress clicks only while an actual gesture is in progress (anchor +
-    // acting finger), not merely when 2+ fingers touch the pad — a thumb
-    // resting on the edge plus a normal click must still click.
-    let suppressor = ClickSuppressor.shared
-    if type == .leftMouseDown, GestureEngine.isGesturing(window: 0.25) {
-        suppressor?.pendingSuppressUp = true
-        return nil                      // drop the click
+    guard let suppressor = ClickSuppressor.shared else { return Unmanaged.passUnretained(event) }
+    var eligible = false
+    if type == .leftMouseDown, GestureEngine.shared.enabled,
+       !TypingMonitor.isTyping(window: Config.shared.typingGuard) {
+        eligible = GestureEngine.clickCandidates(window: 0.25).contains { mapping in
+            // A recent scroll blocks taps, while deliberate swipe gestures can
+            // still act on a scrollable page.
+            (mapping.type != "tap" || !ScrollMonitor.isScrolling(window: Config.shared.scrollGuard))
+                && suppressor.actions.canPerform(action: mapping.action,
+                    apps: mapping.apps ?? Config.shared.targetBundleIDs)
+        }
     }
-    if type == .leftMouseUp, GestureEngine.isGesturing(window: 0.25) || (suppressor?.pendingSuppressUp ?? false) {
-        suppressor?.pendingSuppressUp = false
-        return nil                      // drop the matching release
-    }
+    // Always drain a swallowed down, even after disabling or leaving the app.
+    // A down that passed through must retain its up (including during a drag).
+    if suppressor.state.shouldSuppress(type, eligible: eligible) { return nil }
     return Unmanaged.passUnretained(event)
 }
 
 final class ClickSuppressor {
     static var shared: ClickSuppressor?
     var tap: CFMachPort?
-    var pendingSuppressUp = false
+    var state = ClickSuppressionState()
+    let actions = ActionRunner()
 
     func start() {
         ClickSuppressor.shared = self

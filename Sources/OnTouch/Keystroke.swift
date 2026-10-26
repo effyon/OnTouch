@@ -28,6 +28,22 @@ enum Keys {
         "firstTab":      "cmd+1",
     ]
 
+    // Finder shares the basic tab/navigation commands, but browser commands
+    // such as reopenTab, reload, and privateWindow mean something else there.
+    private static let finderActions: Set<String> = [
+        "nextTab", "prevTab", "closeTab", "newTab", "back", "forward", "newWindow",
+    ]
+
+    private static let appOverrides: [String: [String: String]] = [
+        "com.google.Chrome": [
+            "nextTab": "cmd+alt+right",
+            "prevTab": "cmd+alt+left",
+        ],
+        "org.mozilla.firefox": [
+            "privateWindow": "cmd+shift+p",
+        ],
+    ]
+
     private static let modifiers: [String: CGEventFlags] = [
         "cmd": .maskCommand, "command": .maskCommand,
         "shift": .maskShift,
@@ -51,9 +67,18 @@ enum Keys {
         "1":18,"2":19,"3":20,"4":21,"6":22,"5":23,"9":25,"7":26,"8":28,"0":29,
     ]
 
-    /// Parse "cmd+shift+t" (or a built-in name) into a Keystroke.
-    static func parse(_ action: String) -> Keystroke? {
-        let chord = builtins[action] ?? action
+    /// Resolve a built-in for the target app, or parse an explicit key chord.
+    /// Literal chords remain user overrides even when a named action is unavailable.
+    static func parse(_ action: String, targetBundleID: String? = nil) -> Keystroke? {
+        let chord: String
+        if let builtin = builtins[action] {
+            if targetBundleID == "com.apple.finder", !finderActions.contains(action) {
+                return nil
+            }
+            chord = targetBundleID.flatMap { appOverrides[$0]?[action] } ?? builtin
+        } else {
+            chord = action
+        }
         let parts = chord.lowercased().split(separator: "+").map(String.init)
         guard let keyToken = parts.last else { return nil }
 

@@ -15,7 +15,7 @@
 
 A tiny menu-bar app that reads raw finger data from Apple's private
 `MultitouchSupport.framework` (the same approach Jitouch used) and posts keyboard
-shortcuts to the browser under your cursor.
+shortcuts to the active supported app when its window is under your cursor.
 
 ## Gestures
 
@@ -38,14 +38,23 @@ The defaults focus on switching + closing tabs. Single-finger *swipes*
 (back/forward/reload) are left out by default because they collide with
 two-finger scrolling — add them in your config if you want them.
 
-By default gestures work in **browsers + Finder** (which share the same
-shortcuts: Cmd-W close, Ctrl-Tab next). Set `targetBundleIDs` to `["*"]` to act
-in every app, or list specific bundle IDs. Several safeguards keep gestures from
+By default gestures work in **browsers + Finder**. Actions resolve for the active
+app: Safari and Finder use Control-Tab to switch tabs; Chrome uses
+Command-Option-Right/Left. Finder supports switching, closing, and creating tabs,
+back/forward, and new windows. Browser-only named actions do nothing in Finder.
+Set `targetBundleIDs` to `["*"]` to act in every app, or list specific bundle IDs.
+Several safeguards keep gestures from
 interfering with normal use:
 
-- **Pointer guard** — a gesture only acts when the window directly under the
-  cursor belongs to a target app, so gestures over a menu, the Dock, or another
-  app do nothing. (Disabled when `targetBundleIDs` is `["*"]`.)
+- **Single instance** — launching another copy from a different folder exits
+  the duplicate before it starts reading gestures. Keep the installed copy in
+  `/Applications` so the login LaunchAgent starts that same app.
+- **Active-app + pointer guard** — for scoped bindings, the window under the
+  cursor must belong to the active target app. If a different app is active,
+  pointing at a browser or Finder window does nothing; activate its app first.
+  Within the same app, shortcuts affect its focused window. Shortcuts are sent
+  directly to the validated process. The pointer guard is disabled for `["*"]` or an
+  empty app list, which explicitly targets the active app without pointer checks.
 - **Typing guard** — gestures pause for `typingGuard` seconds after any key
   press, so a stray touch can't fire shortcuts while you type.
 - **Scroll guard** — taps pause for `scrollGuard` seconds after scrolling, so a
@@ -53,9 +62,10 @@ interfering with normal use:
 - **Palm/thumb rejection** — touches that start in an edge strip (a thumb parked
   on the trackpad while your hand rests on the keyboard) count as neither anchor
   nor acting finger. Tunable via `sideEdgeZone`, `topEdgeZone`, `anchorEdgeZone`.
-- **Click suppression** — while an actual gesture is in progress, OnTouch
-  swallows the "tap to click", so a tap-to-switch-tabs won't click a link under
-  the pointer. A resting thumb plus an ordinary click still clicks through.
+- **Click suppression** — while a configured gesture can act in the current app,
+  OnTouch swallows its "tap to click". Unsupported actions and unrelated apps
+  keep their clicks. Mouse releases are suppressed only when the matching press
+  was suppressed, so a gesture starting during a normal drag keeps its release.
 
 Every binding is editable — see [Custom gestures](#custom-gestures).
 
@@ -78,11 +88,35 @@ the app to reload). Each binding looks like:
 | `action` | a built-in name **or** any key chord like `"cmd+shift+t"` |
 | `apps` | *(optional)* bundle IDs this binding applies to; defaults to `targetBundleIDs` |
 
+Bindings are checked in order: the first matching gesture pattern is selected,
+then its app scope is checked. A rejected binding does not fall through to a
+later duplicate pattern. Use the named app-aware actions for common gestures.
+
 **Built-in actions:** `nextTab`, `prevTab`, `closeTab`, `newTab`, `reopenTab`,
 `closeWindow`, `reload`, `back`, `forward`, `newWindow`, `privateWindow`,
 `showAllTabs`, `zoomIn`, `zoomOut`, `firstTab`. Anything else is parsed as a key
 chord (`cmd`/`shift`/`ctrl`/`alt` + a key), so you can trigger *any* menu command
 in *any* app — e.g. `{"...": "...", "action": "cmd+l"}` to focus the address bar.
+
+| Action | Finder | Safari | Chrome |
+| --- | --- | --- | --- |
+| Previous/next tab | Control-Shift-Tab / Control-Tab | Control-Shift-Tab / Control-Tab | Command-Option-Left / Right |
+| Close tab | Command-W | Command-W | Command-W |
+| New tab | Command-T | Command-T | Command-T |
+| Reopen closed tab | Unavailable | Command-Shift-T | Command-Shift-T |
+| Back/forward | Command-[ / ] | Command-[ / ] | Command-[ / ] |
+| New window | Command-N | Command-N | Command-N |
+
+Closing the last tab can close its window. Finder rejects other built-in names,
+including `reload`, `privateWindow`, and `firstTab`, because their browser
+shortcuts trigger unrelated Finder commands. An explicit chord such as
+`cmd+shift+t` remains a user override, so choose its app scope carefully.
+`showAllTabs` retains Safari's overview shortcut; Chrome's Tab Search is a
+different command (`cmd+shift+a`) and can be configured as a literal chord.
+
+Shortcut references: [Apple Finder/macOS](https://support.apple.com/en-us/102650),
+[Safari](https://support.apple.com/guide/safari/keyboard-shortcuts-and-gestures-cpsh003/mac),
+[Chrome](https://support.google.com/chrome/answer/157179?hl=en).
 
 ## Build & run
 
@@ -92,7 +126,7 @@ open OnTouch.app
 ```
 
 Or run in the foreground to watch logs (`./run.sh`). The app lives in the menu
-bar (hand icon + "OnTouch" label); there is no Dock icon.
+bar ("On" wordmark); there is no Dock icon.
 
 > **Can't see the menu-bar item?** On MacBooks with a notch, menu-bar icons can
 > hide *behind the notch* when the bar is crowded. Quit some other menu-bar apps,

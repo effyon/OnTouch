@@ -74,8 +74,8 @@ struct Config: Codable {
     var scrollGuard: Double = 0.4
     // Apps where gestures act. Use ["*"] to act in every app (riskier — a stray
     // gesture can fire shortcuts into text fields). Default: browsers + Finder,
-    // which all share the same shortcuts (Cmd-W close, Ctrl-Tab next, Cmd-T new,
-    // Cmd-[/] back) and aren't text editors.
+    // with app-aware built-in shortcuts. Finder rejects browser-only actions;
+    // explicit key chords remain user overrides.
     var targetBundleIDs: [String] = [
         "com.apple.Safari",
         "com.google.Chrome",

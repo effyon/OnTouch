@@ -7,8 +7,8 @@ import CMultitouch
 /// plus one or more "acting" fingers that either tap (quick touch near the
 /// anchor) or swipe (travel in a direction).
 ///
-/// All frames arrive on one background thread (the MT callback), so the mutable
-/// state needs no locking.
+/// Contact state is updated by the MT callback path. The click-candidate
+/// snapshot is synchronized separately with the main event tap.
 final class GestureEngine {
     static let shared = GestureEngine()
 
@@ -19,18 +19,49 @@ final class GestureEngine {
     /// eligible anchor plus at least one acting finger). ClickSuppressor uses
     /// this — not the raw finger count — so a thumb resting on the edge plus a
     /// normal click is NOT mistaken for a gesture and clicks pass through.
-    static private(set) var lastGestureUptime: Double = -1000
+    private static var lastGestureUptime: Double = -1000
+    private static var recentClickMappings: [Mapping] = []
+    private static let clickSnapshotLock = NSLock()
 
     /// True if a gesture was in progress within the last `window` seconds (the
     /// grace window covers tap-to-click events that arrive just after lift).
     static func isGesturing(window: Double) -> Bool {
-        ProcessInfo.processInfo.systemUptime - lastGestureUptime < window
+        clickSnapshotLock.lock()
+        defer { clickSnapshotLock.unlock() }
+        return ProcessInfo.processInfo.systemUptime - lastGestureUptime < window
     }
 
-    var enabled = true
+    /// Candidate bindings cross from the MT callback to the main event tap.
+    static func clickCandidates(window: Double) -> [Mapping] {
+        clickSnapshotLock.lock()
+        defer { clickSnapshotLock.unlock() }
+        guard ProcessInfo.processInfo.systemUptime - lastGestureUptime < window else { return [] }
+        return recentClickMappings
+    }
 
-    private let cfg = Config.shared
-    private let actions = ActionRunner()
+    private static func noteClickCandidates(_ mappings: [Mapping]) {
+        clickSnapshotLock.lock()
+        recentClickMappings = mappings
+        lastGestureUptime = mappings.isEmpty ? -1000 : ProcessInfo.processInfo.systemUptime
+        clickSnapshotLock.unlock()
+    }
+
+    var enabled = true {
+        didSet {
+            if !enabled { Self.noteClickCandidates([]) }
+        }
+    }
+
+    private let cfg: Config
+    private let actionSink: (String, [String]) -> Void
+
+    init(config: Config = .shared,
+         actionSink: @escaping (String, [String]) -> Void = {
+             ActionRunner().perform(action: $0, apps: $1)
+         }) {
+        cfg = config
+        self.actionSink = actionSink
+    }
 
     private struct Touch {
         let id: Int32
@@ -57,12 +88,13 @@ final class GestureEngine {
 
     func handleFrame(data: UnsafeMutablePointer<Finger>?, count: Int, timestamp now: Double) {
         guard enabled else { tracked.removeAll(); episode = nil; Self.liveFingerCount = 0; return }
-        guard let data = data else { return }
+        // Multitouch callbacks may use a nil pointer for a zero-contact frame.
+        // Process it as a lift so the previous contacts and episode can clear.
+        guard count >= 0, count == 0 || data != nil else { return }
 
         // 1. Ingest current contacts.
         var currentIDs = Set<Int32>()
-        for i in 0..<count {
-            let f = data[i]
+        for f in UnsafeBufferPointer(start: data, count: count) {
             guard Double(f.size) > cfg.minTouchSize else { continue }
             let pos = CGPoint(x: CGFloat(f.normalized.position.x),
                               y: CGFloat(f.normalized.position.y))
@@ -85,10 +117,6 @@ final class GestureEngine {
             if let t = tracked[id] { lifted.append(t) }
             tracked.removeValue(forKey: id)
         }
-
-        // 3. Re-arm as soon as the acting fingers lift (anchor may stay down),
-        //    so gestures can be repeated without lifting the anchor.
-        if tracked.count <= 1 { armed = true }
 
         // Touches that STARTED in any edge strip are "resting" — a parked thumb
         // (measured: left edge at mid-height, or top edge near the keyboard).
@@ -116,11 +144,9 @@ final class GestureEngine {
         let actingLifted = lifted.filter { $0.id != anchor?.id && !isResting($0) }
         let frameMaxDisp = (acting.map { $0.maxDisp } + actingLifted.map { $0.maxDisp }).max() ?? 0
 
-        // A gesture is "in progress" only when an eligible anchor is planted and
-        // another finger is acting — that's what arms click suppression.
-        if anchor != nil && !(acting.isEmpty && actingLifted.isEmpty) {
-            Self.lastGestureUptime = ProcessInfo.processInfo.systemUptime
-        }
+        // Re-arm when acting fingers clear. A resting edge thumb may remain
+        // alongside the anchor and must not prevent another gesture.
+        if acting.isEmpty { armed = true }
 
         // 5. Maintain the acting-finger episode.
         if !acting.isEmpty {
@@ -152,6 +178,33 @@ final class GestureEngine {
             guard let a = anchor, let ep = episode else { return false }
             return (ep.start - a.startTime) >= cfg.anchorLead
         }()
+
+        // Suppress clicks only for a binding that could recognize this episode.
+        // The event tap also checks the current app and action support. A mere
+        // two-finger contact, a typing/scroll guard, or an unmapped pattern must
+        // not swallow ordinary clicks in another app.
+        if let ep = episode, !ep.fired {
+            let tapDir = tapDirection(ep.centroid, anchor: anchorLeads ? anchor : nil)
+            var candidates: [Mapping] = []
+            if canFireTap, (now - ep.start) <= cfg.tapMaxDuration,
+               ep.maxDisp <= cfg.tapMaxMove,
+               let mapping = match(anchor: anchorLeads, fingers: ep.peak,
+                                   type: "tap", direction: tapDir) {
+                candidates.append(mapping)
+            }
+            if canFireSwipe, !acting.isEmpty {
+                let directions = swipeDirection(acting).map { [$0] } ?? ["left", "right", "up", "down"]
+                for direction in directions {
+                    if let mapping = match(anchor: anchorPresent, fingers: acting.count,
+                                           type: "swipe", direction: direction) {
+                        candidates.append(mapping)
+                    }
+                }
+            }
+            // Empty snapshots clear an invalid ongoing pattern. Completed
+            // episodes retain the last valid snapshot for tap-to-click grace.
+            Self.noteClickCandidates(candidates)
+        }
 
         // 6a. Swipe — fires mid-gesture, while the acting fingers are still down.
         if canFireSwipe, var ep = episode, !ep.fired, !acting.isEmpty,
@@ -228,7 +281,7 @@ final class GestureEngine {
 
     private func fire(_ m: Mapping, _ now: Double) {
         NSLog("OnTouch: \(m.fingers)-finger \(m.type) \(m.direction) → \(m.action)")
-        actions.perform(action: m.action, apps: m.apps ?? cfg.targetBundleIDs)
+        actionSink(m.action, m.apps ?? cfg.targetBundleIDs)
         cooldownUntil = now + cfg.cooldown
         armed = false
     }

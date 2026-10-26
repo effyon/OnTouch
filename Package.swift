@@ -20,5 +20,6 @@ let package = Package(
             dependencies: ["CMultitouch"],
             linkerSettings: [.unsafeFlags(mtFrameworkFlags)]
         ),
+        .testTarget(name: "OnTouchTests", dependencies: ["OnTouch"]),
     ]
 )

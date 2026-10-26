@@ -10,6 +10,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var enableItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Launch Services can run copies from different folders at once. Each
+        // copy would otherwise recognize and post the same gesture twice.
+        let current = NSRunningApplication.current
+        if let bundleID = current.bundleIdentifier,
+           NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .contains(where: { $0.processIdentifier < current.processIdentifier }) {
+            NSLog("OnTouch: another instance is already running; quitting duplicate")
+            NSApp.terminate(nil)
+            return
+        }
         setupMenu()
         promptForAccessibility()
         typingMonitor.start()
@@ -18,6 +28,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !reader.start() {
             NSLog("OnTouch: no multitouch device — check Input Monitoring permission")
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        reader.stop()
     }
 
     // MARK: Menu bar
@@ -31,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let about = NSMenuItem(title: "OnTouch \(version)", action: nil, keyEquivalent: "")
+        about.isEnabled = false
+        menu.addItem(about)
         enableItem = NSMenuItem(title: "Gestures Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         enableItem.state = .on
         enableItem.target = self
