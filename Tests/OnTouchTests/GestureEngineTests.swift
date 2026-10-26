@@ -119,6 +119,30 @@ final class GestureEngineTests: XCTestCase {
         XCTAssertEqual(dispatchedApps, [["com.apple.Safari"]])
     }
 
+    func testResetRequiresFreshAnchorAndPreservesEnabledPreference() {
+        var actions: [String] = []
+        let engine = GestureEngine(config: testConfig()) { action, _ in actions.append(action) }
+        let anchor = finger(1, x: 0.4, y: 0.5)
+        let actor = finger(2, x: 0.7, y: 0.5)
+        send([anchor], to: engine, at: 0)
+        send([anchor], to: engine, at: 0.1)
+        send([anchor, actor], to: engine, at: 0.2)
+
+        engine.reset()
+        XCTAssertTrue(engine.enabled)
+        XCTAssertEqual(GestureEngine.liveFingerCount, 0)
+        XCTAssertTrue(GestureEngine.clickCandidates(window: 0.25).isEmpty)
+        send([actor], to: engine, at: 0.22)
+        engine.handleFrame(data: nil, count: 0, timestamp: 0.24)
+        XCTAssertTrue(actions.isEmpty, "A pre-restart anchor must not complete a gesture")
+
+        send([anchor], to: engine, at: 0.5)
+        send([anchor], to: engine, at: 0.6)
+        send([anchor, actor], to: engine, at: 0.7)
+        send([anchor], to: engine, at: 0.72)
+        XCTAssertEqual(actions, ["nextTab"])
+    }
+
     private func testConfig() -> Config {
         var config = Config()
         config.typingGuard = 0

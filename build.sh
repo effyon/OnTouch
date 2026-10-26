@@ -1,6 +1,6 @@
 #!/bin/bash
-# Build OnTouch and assemble a .app bundle, then ad-hoc code-sign it so macOS
-# remembers its Accessibility / Input Monitoring permissions across builds.
+# Build OnTouch and assemble an ad-hoc signed .app bundle. Changed builds may
+# require re-granting Accessibility / Input Monitoring permissions in macOS.
 set -euo pipefail
 cd "$(dirname "$0")"
 

@@ -38,9 +38,10 @@ final class ActionRunner {
         }
         guard let target = targetProvider(apps) else { return }
         guard let ks = Keys.parse(action, targetBundleID: target.bundleID) else {
-            NSLog("OnTouch: unsupported action '\(action)' for \(target.bundleID)")
+            Diagnostic.log("OnTouch: unsupported action '\(action)' for \(target.bundleID)")
             return
         }
+        Diagnostic.log("OnTouch: posting \(action) to \(target.bundleID) pid=\(target.pid)")
         eventPoster(ks, target.pid)
     }
 
@@ -55,8 +56,12 @@ final class ActionRunner {
               let bundleID = app.bundleIdentifier else { return nil }
         let frontmost = ActionTarget(pid: app.processIdentifier, bundleID: bundleID)
         if apps.isEmpty || apps.contains("*") { return frontmost }
-        return TargetPolicy.resolve(apps: apps, frontmost: frontmost,
-                                    underPointer: appUnderCursor())
+        let pointer = appUnderCursor()
+        let target = TargetPolicy.resolve(apps: apps, frontmost: frontmost, underPointer: pointer)
+        if target == nil {
+            Diagnostic.log("OnTouch: target blocked; active=\(frontmost.bundleID), pointer=\(pointer?.bundleID ?? "unknown")")
+        }
+        return target
     }
 
     private static func appUnderCursor() -> ActionTarget? {
@@ -74,6 +79,9 @@ final class ActionRunner {
             guard let pid = window[kCGWindowOwnerPID as String] as? pid_t,
                   let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
             else { return nil }
+            let layer = window[kCGWindowLayer as String] as? Int ?? 0
+            let alpha = window[kCGWindowAlpha as String] as? Double ?? 1
+            Diagnostic.log("OnTouch: pointer owner=\(bundleID), layer=\(layer), alpha=\(alpha)")
             return ActionTarget(pid: pid, bundleID: bundleID)
         }
         return nil

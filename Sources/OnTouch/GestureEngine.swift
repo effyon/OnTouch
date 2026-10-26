@@ -46,9 +46,20 @@ final class GestureEngine {
         clickSnapshotLock.unlock()
     }
 
-    var enabled = true {
-        didSet {
-            if !enabled { Self.noteClickCandidates([]) }
+    private let stateLock = NSRecursiveLock()
+    private var enabledStorage = true
+
+    var enabled: Bool {
+        get {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            return enabledStorage
+        }
+        set {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            enabledStorage = newValue
+            if !newValue { resetState() }
         }
     }
 
@@ -86,8 +97,26 @@ final class GestureEngine {
     private var cooldownUntil: Double = 0
     private var armed = true     // re-armed once acting fingers clear
 
+    /// Permission/device restarts must not reuse contacts from a prior stream.
+    func reset() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        resetState()
+    }
+
+    private func resetState() {
+        tracked.removeAll()
+        episode = nil
+        cooldownUntil = 0
+        armed = true
+        Self.liveFingerCount = 0
+        Self.noteClickCandidates([])
+    }
+
     func handleFrame(data: UnsafeMutablePointer<Finger>?, count: Int, timestamp now: Double) {
-        guard enabled else { tracked.removeAll(); episode = nil; Self.liveFingerCount = 0; return }
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard enabledStorage else { resetState(); return }
         // Multitouch callbacks may use a nil pointer for a zero-contact frame.
         // Process it as a lift so the previous contacts and episode can clear.
         guard count >= 0, count == 0 || data != nil else { return }
@@ -108,6 +137,9 @@ final class GestureEngine {
                 tracked[f.identifier] = Touch(id: f.identifier, startTime: now,
                                               startPos: pos, curPos: pos, maxDisp: 0, lastSeen: now)
             }
+        }
+        if Self.liveFingerCount != currentIDs.count {
+            Diagnostic.log("OnTouch: qualifying contact count=\(currentIDs.count)")
         }
         Self.liveFingerCount = currentIDs.count
 
@@ -280,7 +312,7 @@ final class GestureEngine {
     }
 
     private func fire(_ m: Mapping, _ now: Double) {
-        NSLog("OnTouch: \(m.fingers)-finger \(m.type) \(m.direction) → \(m.action)")
+        Diagnostic.log("OnTouch: \(m.fingers)-finger \(m.type) \(m.direction) → \(m.action)")
         actionSink(m.action, m.apps ?? cfg.targetBundleIDs)
         cooldownUntil = now + cfg.cooldown
         armed = false

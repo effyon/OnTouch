@@ -154,7 +154,9 @@ rm ~/Library/LaunchAgents/com.local.ontouch.plist
 
 ## Permissions (first launch)
 
-macOS will prompt for two permissions. Grant both, then **quit and relaunch**:
+macOS will prompt for two permissions. Grant both; OnTouch checks for permission
+changes and starts its input services when access becomes available. The menu
+shows Accessibility and Input Monitoring status separately from the gesture toggle.
 
 1. **Accessibility** — lets the app post keystrokes to Safari.
    System Settings → Privacy & Security → Accessibility.
@@ -163,8 +165,16 @@ macOS will prompt for two permissions. Grant both, then **quit and relaunch**:
 
 The menu has shortcuts to open both panes. Add `OnTouch.app` and toggle it on.
 
-> The app is ad-hoc signed, so its permission grants survive rebuilds (same
-> bundle identifier `com.local.ontouch`). If you move the `.app`, re-grant.
+> Local builds are ad-hoc signed. A changed build can invalidate an earlier
+> permission grant even with the same bundle identifier `com.local.ontouch`.
+> If a replaced build reports missing access while System Settings shows it on,
+> turn its grant off and on, or remove the stale entry and add the installed
+> `/Applications/OnTouch.app` again.
+
+For troubleshooting, OnTouch writes status logs under subsystem
+`com.local.ontouch`: permission results, device startup, first touch-frame receipt,
+recognized actions, and target-app decisions. These entries contain no typed text,
+window titles, file names, or touch positions.
 
 ## Tuning
 

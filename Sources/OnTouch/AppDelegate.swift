@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import IOKit.hid
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -8,6 +9,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let scrollMonitor = ScrollMonitor()
     private let clickSuppressor = ClickSuppressor()
     private var enableItem: NSMenuItem!
+    private var accessibilityStatusItem: NSMenuItem!
+    private var inputMonitoringStatusItem: NSMenuItem!
+    private var permissionTimer: Timer?
+    private var accessibilityGranted: Bool?
+    private var inputMonitoringGranted: Bool?
+    private var lastAccessibilityStartUptime: Double = -1000
+    private var lastReaderStartUptime: Double = -1000
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Launch Services can run copies from different folders at once. Each
@@ -16,22 +24,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let bundleID = current.bundleIdentifier,
            NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .contains(where: { $0.processIdentifier < current.processIdentifier }) {
-            NSLog("OnTouch: another instance is already running; quitting duplicate")
+            Diagnostic.log("OnTouch: another instance is already running; quitting duplicate")
             NSApp.terminate(nil)
             return
         }
         setupMenu()
         promptForAccessibility()
-        typingMonitor.start()
-        scrollMonitor.start()
-        clickSuppressor.start()
-        if !reader.start() {
-            NSLog("OnTouch: no multitouch device — check Input Monitoring permission")
+        let inputGranted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        Diagnostic.log("OnTouch: Input Monitoring request granted=\(inputGranted)")
+        // Preserve the original private-MT startup attempt. ListenEvent status
+        // is diagnostic; its requirement for this private API is unverified.
+        Diagnostic.log("OnTouch: attempting raw multitouch startup regardless of ListenEvent grant")
+        startReader()
+        refreshPermissions()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            self?.refreshPermissions()
         }
+        permissionTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        permissionTimer?.invalidate()
+        permissionTimer = nil
         reader.stop()
+        typingMonitor.stop()
+        scrollMonitor.stop()
+        clickSuppressor.stop()
     }
 
     // MARK: Menu bar
@@ -53,6 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         enableItem.state = .on
         enableItem.target = self
         menu.addItem(enableItem)
+        accessibilityStatusItem = NSMenuItem(title: "Accessibility: Checking…", action: nil, keyEquivalent: "")
+        accessibilityStatusItem.isEnabled = false
+        menu.addItem(accessibilityStatusItem)
+        inputMonitoringStatusItem = NSMenuItem(title: "Input Monitoring: Checking…", action: nil, keyEquivalent: "")
+        inputMonitoringStatusItem.isEnabled = false
+        menu.addItem(inputMonitoringStatusItem)
         menu.addItem(.separator())
 
         for line in ["Hold a finger, tap left/right = prev/next tab",
@@ -100,10 +125,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Permissions
 
+    private func refreshPermissions() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let axGranted = AXIsProcessTrusted()
+        let inputGranted = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
+
+        if accessibilityGranted != axGranted {
+            accessibilityGranted = axGranted
+            Diagnostic.log("OnTouch: Accessibility granted=\(axGranted)")
+            if axGranted {
+                lastAccessibilityStartUptime = now
+                typingMonitor.start()
+                scrollMonitor.start()
+                clickSuppressor.start()
+            } else {
+                typingMonitor.stop()
+                scrollMonitor.stop()
+                clickSuppressor.stop()
+            }
+        }
+
+        if inputMonitoringGranted != inputGranted {
+            let previousGrant = inputMonitoringGranted
+            inputMonitoringGranted = inputGranted
+            Diagnostic.log("OnTouch: Input Monitoring granted=\(inputGranted)")
+            if previousGrant != nil, inputGranted {
+                reader.stop()
+                startReader()
+            } else if previousGrant == true, !inputGranted {
+                reader.stop()
+            }
+        }
+
+        // Retry failed starts at a bounded interval, without repeating prompts.
+        if axGranted, now - lastAccessibilityStartUptime >= 5,
+           !typingMonitor.isRunning || !scrollMonitor.isRunning || !clickSuppressor.isRunning {
+            lastAccessibilityStartUptime = now
+            typingMonitor.start()
+            scrollMonitor.start()
+            clickSuppressor.start()
+        }
+        if inputGranted, now - lastReaderStartUptime >= 5, !reader.isRunning {
+            startReader()
+        }
+
+        accessibilityStatusItem.title = "Accessibility: \(axGranted ? "Allowed" : "Permission needed")"
+        inputMonitoringStatusItem.title = "Input Monitoring: \(inputGranted ? "Allowed" : "Not granted")"
+    }
+
+    private func startReader() {
+        lastReaderStartUptime = ProcessInfo.processInfo.systemUptime
+        if !reader.start() {
+            Diagnostic.log("OnTouch: no multitouch device running immediately after startup attempt")
+        }
+    }
+
     private func promptForAccessibility() {
+        Diagnostic.log("OnTouch: initial Accessibility trusted=\(AXIsProcessTrusted())")
         let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(opts) {
-            NSLog("OnTouch: Accessibility permission not yet granted")
+            Diagnostic.log("OnTouch: Accessibility permission not yet granted")
         }
     }
 

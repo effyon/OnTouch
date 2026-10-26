@@ -9,9 +9,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.local.ontouch</string>
     <key>CFBundleVersion</key>
-    <string>2</string>
+    <string>3</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2</string>
+    <string>0.2.1</string>
     <key>CFBundleExecutable</key>
     <string>OnTouch</string>
     <key>CFBundlePackageType</key>

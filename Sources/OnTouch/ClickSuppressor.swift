@@ -34,11 +34,19 @@ private func clickTapCallback(proxy: CGEventTapProxy, type: CGEventType,
 final class ClickSuppressor {
     static var shared: ClickSuppressor?
     var tap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
     var state = ClickSuppressionState()
     let actions = ActionRunner()
 
+    var isRunning: Bool {
+        guard let tap = tap, let source = runLoopSource else { return false }
+        return CFMachPortIsValid(tap) && CFRunLoopSourceIsValid(source)
+            && CGEvent.tapIsEnabled(tap: tap)
+    }
+
     func start() {
-        ClickSuppressor.shared = self
+        if isRunning { return }
+        if tap != nil { stop() }
         let mask = (1 << CGEventType.leftMouseDown.rawValue) | (1 << CGEventType.leftMouseUp.rawValue)
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap,
                                           place: .headInsertEventTap,
@@ -46,13 +54,37 @@ final class ClickSuppressor {
                                           eventsOfInterest: CGEventMask(mask),
                                           callback: clickTapCallback,
                                           userInfo: nil) else {
-            NSLog("OnTouch: could not create click event tap (needs Accessibility)")
+            Diagnostic.log("OnTouch: could not create click event tap (needs Accessibility)")
+            return
+        }
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            CFMachPortInvalidate(tap)
+            Diagnostic.log("OnTouch: could not create click event tap run-loop source")
             return
         }
         self.tap = tap
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        runLoopSource = source
+        ClickSuppressor.shared = self
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        NSLog("OnTouch: click suppressor active")
+        Diagnostic.log("OnTouch: click suppressor active")
+    }
+
+    func stop() {
+        if let tap = tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            CFRunLoopSourceInvalidate(source)
+            runLoopSource = nil
+        }
+        if let tap = tap {
+            CFMachPortInvalidate(tap)
+            self.tap = nil
+            Diagnostic.log("OnTouch: click suppressor stopped")
+        }
+        if ClickSuppressor.shared === self { ClickSuppressor.shared = nil }
+        state = ClickSuppressionState()
     }
 }

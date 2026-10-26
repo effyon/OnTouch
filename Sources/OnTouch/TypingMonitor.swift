@@ -9,11 +9,27 @@ let kOnTouchSyntheticMarker: Int64 = 0x4F_4E_54_43   // "ONTC"
 /// pause while they're typing — preventing stray gestures from firing
 /// shortcuts into text fields.
 final class TypingMonitor {
-    static private(set) var lastKeyUptime: Double = -1000
+    private static let timestampLock = NSLock()
+    private static var keyUptime: Double = -1000
+    static private(set) var lastKeyUptime: Double {
+        get {
+            timestampLock.lock()
+            defer { timestampLock.unlock() }
+            return keyUptime
+        }
+        set {
+            timestampLock.lock()
+            keyUptime = newValue
+            timestampLock.unlock()
+        }
+    }
 
     private var monitor: Any?
 
+    var isRunning: Bool { monitor != nil }
+
     func start() {
+        guard monitor == nil else { return }
         // Global monitor: sees key events delivered to other apps. Requires the
         // Accessibility permission, which OnTouch already needs.
         monitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { event in
@@ -23,6 +39,14 @@ final class TypingMonitor {
             }
             TypingMonitor.lastKeyUptime = ProcessInfo.processInfo.systemUptime
         }
+        Diagnostic.log("OnTouch: typing monitor active=\(monitor != nil)")
+    }
+
+    func stop() {
+        guard let monitor = monitor else { return }
+        NSEvent.removeMonitor(monitor)
+        self.monitor = nil
+        Diagnostic.log("OnTouch: typing monitor stopped")
     }
 
     /// True if a real key was pressed within the last `window` seconds.
